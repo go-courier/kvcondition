@@ -48,7 +48,7 @@ func ParseLabelQL(lql string) (*LabelQL, error) {
 	return labelQL, nil
 }
 
-// swagger:strfmt lql
+// openapi:strfmt lql
 type LabelQL struct {
 	Node
 }
