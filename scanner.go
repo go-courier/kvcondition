@@ -63,7 +63,7 @@ func (s *nodeScanner) ScanNode() (Node, error) {
 	for {
 		tok := s.Peek()
 
-		if tok == scanner.EOF || tok == ')' {
+		if tok == ')' {
 			if err := completeRule(); err != nil {
 				return nil, err
 			}
@@ -74,13 +74,31 @@ func (s *nodeScanner) ScanNode() (Node, error) {
 
 		// quote skip
 		if tok == '"' {
-			for tok := s.Next(); tok != '"'; tok = s.Next() {
+			for {
+				tok = s.Next()
+
+				if tok == scanner.EOF {
+					break
+				}
+
+				if tok == '"' {
+					tok = s.Next()
+					break
+				}
+
 				if tok == '\\' {
 					tok = s.Next()
 				}
+
 				rs.WriteRune(tok)
 			}
-			tok = s.Next()
+		}
+
+		if tok == scanner.EOF {
+			if err := completeRule(); err != nil {
+				return nil, err
+			}
+			break
 		}
 
 		if keywords[tok] {

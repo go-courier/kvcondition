@@ -1,6 +1,7 @@
 package kvcondition
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,6 +13,25 @@ func BenchmarkParseKVCondition(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		ParseKVCondition(rule)
 	}
+}
+
+func TestKVCondition(t *testing.T) {
+	ql, _ := ParseKVCondition([]byte(`ip != "1.1.1.1"`))
+
+	type Data struct {
+		QL KVCondition `json:"ql"`
+	}
+
+	data, err := json.Marshal(&Data{
+		QL: *ql,
+	})
+	require.NoError(t, err)
+
+	d := Data{}
+	er := json.Unmarshal(data, &d)
+	require.NoError(t, er)
+
+	require.True(t, d.QL.String() == ql.String())
 }
 
 func TestParseKVCondition(t *testing.T) {
