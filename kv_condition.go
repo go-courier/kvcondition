@@ -27,6 +27,9 @@ var _ interface {
 } = (*KVCondition)(nil)
 
 func (v KVCondition) MarshalText() ([]byte, error) {
+	if v.Node == nil {
+		return nil, nil
+	}
 	return []byte(v.String()), nil
 }
 
