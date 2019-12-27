@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-courier/kvcondition"
 	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/require"
 )
 
 func BenchmarkParseKVCondition(b *testing.B) {
@@ -73,10 +72,8 @@ func TestParseKVCondition(t *testing.T) {
 }
 
 func TestParseKVConditionFailed(t *testing.T) {
-	tt := require.New(t)
-
 	rule := "tag = ONLINE & tag = \"some label\" & ( ip = 1.1.1.1 | ip = \"8.8.8.8\" | tag = test & ip = 4.4.4.4"
 
 	_, err := kvcondition.ParseKVCondition([]byte(rule))
-	tt.Error(err)
+	NewWithT(t).Expect(err).NotTo(BeNil())
 }
