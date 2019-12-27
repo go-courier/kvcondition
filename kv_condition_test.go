@@ -1,73 +1,75 @@
-package kvcondition
+package kvcondition_test
 
 import (
 	"encoding/json"
 	"testing"
 
+	"github.com/go-courier/kvcondition"
+	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/require"
 )
 
 func BenchmarkParseKVCondition(b *testing.B) {
-	rule := []byte(`env && tag = ONLINE & tag = "some label" & ip & ( ip != 1.1.1.1 | ip ^= "8.8" | tag *= "test&" ) | ip $= 4.4`)
+	rule := []byte(`env & tag = ONLINE & tag = "some label" & ip & ( ip != 1.1.1.1 | ip ^= "8.8" | tag *= "test&" ) | ip $= 4.4`)
 
 	for i := 0; i < b.N; i++ {
-		ParseKVCondition(rule)
+		kvcondition.ParseKVCondition(rule)
 	}
 }
 
+func TestKVCondition_IsZero(t *testing.T) {
+	ql, _ := kvcondition.ParseKVCondition([]byte(``))
+
+	NewWithT(t).Expect(ql.IsZero()).To(BeTrue())
+}
+
 func TestKVCondition(t *testing.T) {
-	ql, _ := ParseKVCondition([]byte(`ip != "1.1.1.1"`))
+	ql, _ := kvcondition.ParseKVCondition([]byte(`ip != "1.1.1.1"`))
 
 	type Data struct {
-		QL KVCondition `json:"ql"`
+		QL kvcondition.KVCondition `json:"ql"`
 	}
 
 	data, err := json.Marshal(&Data{
 		QL: *ql,
 	})
-	require.NoError(t, err)
+	NewWithT(t).Expect(err).To(BeNil())
 
 	d := Data{}
 	er := json.Unmarshal(data, &d)
-	require.NoError(t, er)
 
-	require.True(t, d.QL.String() == ql.String())
+	NewWithT(t).Expect(er).To(BeNil())
+	NewWithT(t).Expect(ql.String()).To(Equal(d.QL.String()))
 }
 
 func TestParseKVCondition(t *testing.T) {
-	tt := require.New(t)
-
 	rule := []byte(`env & tag = ONLINE & tag = "some label" & ip & ( ip != 1.1.1.1 | ip ^= "8.8" | tag *= "test\&" ) | ip $= 4.4`)
 
-	kvCondition := &KVCondition{}
+	kvCondition := &kvcondition.KVCondition{}
 	err := kvCondition.UnmarshalText(rule)
-	tt.NoError(err)
+	NewWithT(t).Expect(err).To(BeNil())
+	NewWithT(t).Expect(kvCondition.Node.String()).To(Equal(`( ( ( ( ( env & tag = "ONLINE" ) & tag = "some label" ) & ip ) & ( ( ip != "1.1.1.1" | ip ^= "8.8" ) | tag *= "test&" ) ) | ip $= "4.4" )`))
 
-	tt.Equal(
-		`( ( ( ( ( env & tag = "ONLINE" ) & tag = "some label" ) & ip ) & ( ( ip != "1.1.1.1" | ip ^= "8.8" ) | tag *= "test&" ) ) | ip $= "4.4" )`,
-		kvCondition.Node.String(),
-	)
+	kvc, err := kvcondition.ParseKVCondition([]byte(kvCondition.Node.String()))
+	NewWithT(t).Expect(err).To(BeNil())
+	NewWithT(t).Expect(kvc.String()).To(Equal(kvCondition.String()))
 
-	kvc, err := ParseKVCondition([]byte(kvCondition.Node.String()))
-	tt.NoError(err)
-	tt.Equal(kvCondition.String(), kvc.String())
+	rules := make([]*kvcondition.Rule, 0)
 
-	rules := make([]*Rule, 0)
-
-	kvc.Range(func(label *Rule) {
+	kvc.Range(func(label *kvcondition.Rule) {
 		rules = append(rules, label)
 	})
 
-	tt.Equal([]*Rule{
-		OperatorExists.Of("env", ""),
-		OperatorEqual.Of("tag", "ONLINE"),
-		OperatorEqual.Of("tag", "some label"),
-		OperatorExists.Of("ip", ""),
-		OperatorNotEqual.Of("ip", "1.1.1.1"),
-		OperatorStartsWith.Of("ip", "8.8"),
-		OperatorContains.Of("tag", "test&"),
-		OperatorEndsWith.Of("ip", "4.4"),
-	}, rules)
+	NewWithT(t).Expect(rules).To(Equal([]*kvcondition.Rule{
+		kvcondition.OperatorExists.Of("env", ""),
+		kvcondition.OperatorEqual.Of("tag", "ONLINE"),
+		kvcondition.OperatorEqual.Of("tag", "some label"),
+		kvcondition.OperatorExists.Of("ip", ""),
+		kvcondition.OperatorNotEqual.Of("ip", "1.1.1.1"),
+		kvcondition.OperatorStartsWith.Of("ip", "8.8"),
+		kvcondition.OperatorContains.Of("tag", "test&"),
+		kvcondition.OperatorEndsWith.Of("ip", "4.4"),
+	}))
 }
 
 func TestParseKVConditionFailed(t *testing.T) {
@@ -75,6 +77,6 @@ func TestParseKVConditionFailed(t *testing.T) {
 
 	rule := "tag = ONLINE & tag = \"some label\" & ( ip = 1.1.1.1 | ip = \"8.8.8.8\" | tag = test & ip = 4.4.4.4"
 
-	_, err := ParseKVCondition([]byte(rule))
+	_, err := kvcondition.ParseKVCondition([]byte(rule))
 	tt.Error(err)
 }

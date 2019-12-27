@@ -26,8 +26,13 @@ var _ interface {
 	encoding.TextUnmarshaler
 } = (*KVCondition)(nil)
 
+func (v KVCondition) IsZero() bool  {
+	return v.Node == nil
+}
+
+
 func (v KVCondition) MarshalText() ([]byte, error) {
-	if v.Node == nil {
+	if v.IsZero() {
 		return nil, nil
 	}
 	return []byte(v.String()), nil
